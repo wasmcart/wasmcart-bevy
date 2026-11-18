@@ -1,0 +1,2 @@
+Vendored from crates.io bevy_log 0.20.1 by scripts/vendor-bevy.sh.
+Only change: no "web" feature on wasm32 bevy_app/bevy_platform/bevy_reflect deps.

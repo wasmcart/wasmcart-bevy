@@ -1,0 +1,21 @@
+[package]
+name = "wasmcart-bevy"
+description = "Bevy plugins that run a Bevy app as a wasmcart cart: runner, time, gamepads, keyboard, pointer, audio, assets and WebGPU rendering"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+# WebGPU rendering through wasmcart-wgpu (wgpu's custom backend over the
+# wasmcart WebGPU imports).
+render = ["bevy/bevy_render", "bevy/bevy_window", "bevy/bevy_asset"]
+# Read Bevy assets from the cart's own asset bundle (wc_load_asset).
+assets = ["bevy/bevy_asset"]
+
+[dependencies]
+bevy = { workspace = true, features = ["std", "bevy_window", "gamepad", "keyboard", "mouse", "touch"] }
+wasmcart = { workspace = true }
+log = "0.4"

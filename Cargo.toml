@@ -1,0 +1,34 @@
+[workspace]
+resolver = "3"
+members = ["crates/wasmcart-bevy", "examples/*"]
+exclude = ["bevy-patches"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/wasmcart/wasmcart-bevy"
+rust-version = "1.97"
+
+[workspace.dependencies]
+bevy = { version = "0.20.1", default-features = false }
+wasmcart = { git = "https://github.com/wasmcart/wasmcart-rust", features = ["std"] }
+wasmcart-bevy = { path = "crates/wasmcart-bevy" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[profile.dev]
+opt-level = 1
+panic = "abort"
+
+# See scripts/vendor-bevy.sh: these three crates are the crates.io release with
+# one manifest line removed, so Bevy's browser-only code stays off on wasip1.
+[patch.crates-io]
+bevy_asset = { path = "bevy-patches/bevy_asset" }
+bevy_render = { path = "bevy-patches/bevy_render" }
+bevy_log = { path = "bevy-patches/bevy_log" }
