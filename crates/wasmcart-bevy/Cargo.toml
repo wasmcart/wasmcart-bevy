@@ -11,7 +11,7 @@ rust-version.workspace = true
 default = []
 # WebGPU rendering through wasmcart-wgpu (wgpu's custom backend over the
 # wasmcart WebGPU imports).
-render = ["bevy/bevy_render", "bevy/bevy_window", "bevy/bevy_asset"]
+render = ["assets", "bevy/bevy_render", "dep:wasmcart-wgpu", "dep:raw-window-handle"]
 # Read Bevy assets from the cart's own asset bundle (wc_load_asset).
 assets = ["bevy/bevy_asset"]
 
@@ -19,3 +19,5 @@ assets = ["bevy/bevy_asset"]
 bevy = { workspace = true, features = ["std", "bevy_window", "gamepad", "keyboard", "mouse", "touch"] }
 wasmcart = { workspace = true }
 log = "0.4"
+raw-window-handle = { version = "0.6", optional = true }
+wasmcart-wgpu = { workspace = true, optional = true }

@@ -293,6 +293,9 @@ fn mix_system(audio: Res<Audio>, mut clock: ResMut<MixClock>) {
     clock.owed += dt * mix_rate() as f64 / 1000.0;
     let frames = clock.owed as usize;
     clock.owed -= frames as f64;
+    // Never write more than half the ring in one frame: past that the host
+    // cannot tell how far the cursor moved. A long stall drops sound instead.
+    let frames = frames.min(abi::config().audio_frames as usize / 2);
     if frames == 0 {
         return;
     }

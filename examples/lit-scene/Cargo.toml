@@ -1,0 +1,24 @@
+[package]
+name = "lit-scene"
+description = "A 3D wasmcart-bevy cart: PBR materials, shadowed sun, moving coloured point lights and a pad-orbited camera"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasmcart-bevy = { workspace = true, features = ["render"] }
+bevy = { workspace = true, features = [
+    "std",
+    "bevy_asset",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_light",
+    "tonemapping_luts",
+    "ktx2",
+    "zstd_rust",
+] }

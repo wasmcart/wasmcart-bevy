@@ -1,13 +1,14 @@
 //! Bevy's ECS with no renderer: entities are coloured squares drawn into the
 //! cart's 2D framebuffer by a plain system. Pad 1 steers the white square,
-//! A chirps and spawns a bouncing square, B clears them.
+//! A chirps and spawns a bouncing square, B clears them. Arrow keys also steer,
+//! and a click or a touch puts the white square where it lands.
 
 use bevy::prelude::*;
 use wasmcart_bevy::prelude::*;
 
 const W: u32 = 320;
 const H: u32 = 240;
-const CART: CartConfig = CartConfig::new(W, H).debug();
+const CART: CartConfig = CartConfig::new(W, H).keyboard().pointer().debug();
 
 #[derive(Component)]
 struct Player;
@@ -31,7 +32,7 @@ fn app() -> App {
     let mut app = App::new();
     app.add_plugins(WasmcartPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, (steer, spawn_or_clear, bounce, publish).chain())
+        .add_systems(Update, (steer, keys, click, spawn_or_clear, bounce, publish).chain())
         .add_systems(PostUpdate, draw);
     app
 }
@@ -57,6 +58,39 @@ fn steer(time: Res<Time>, pads: Query<&Gamepad>, mut q: Query<&mut Pos, With<Pla
         // screen y grows downward; Bevy's stick y grows upward
         p.0 += Vec2::new(dir.x, -dir.y).clamp_length_max(1.0) * 120.0 * time.delta_secs();
         p.0 = p.0.clamp(Vec2::ZERO, Vec2::new(W as f32 - 8.0, H as f32 - 8.0));
+    }
+}
+
+/// Arrow keys steer too (the cart declares the keyboard).
+fn keys(time: Res<Time>, keys: Res<ButtonInput<KeyCode>>, mut q: Query<&mut Pos, With<Player>>) {
+    let mut d = Vec2::ZERO;
+    if keys.pressed(KeyCode::ArrowLeft) { d.x -= 1.0; }
+    if keys.pressed(KeyCode::ArrowRight) { d.x += 1.0; }
+    if keys.pressed(KeyCode::ArrowUp) { d.y -= 1.0; }
+    if keys.pressed(KeyCode::ArrowDown) { d.y += 1.0; }
+    for mut p in &mut q {
+        p.0 = (p.0 + d * 120.0 * time.delta_secs()).clamp(Vec2::ZERO, Vec2::new(W as f32 - 8.0, H as f32 - 8.0));
+    }
+}
+
+/// A mouse click or a touch puts the player there (the cart declares the pointer).
+fn click(
+    buttons: Res<ButtonInput<MouseButton>>,
+    window: Query<&Window>,
+    touches: Res<Touches>,
+    mut q: Query<&mut Pos, With<Player>>,
+) {
+    let mut at = None;
+    if buttons.just_pressed(MouseButton::Left) {
+        at = window.iter().next().and_then(|w| w.physical_cursor_position()).map(|p| p.as_vec2());
+    }
+    if let Some(t) = touches.iter_just_pressed().next() {
+        at = Some(t.position());
+    }
+    if let Some(at) = at {
+        for mut p in &mut q {
+            p.0 = (at - Vec2::splat(4.0)).clamp(Vec2::ZERO, Vec2::new(W as f32 - 8.0, H as f32 - 8.0));
+        }
     }
 }
 

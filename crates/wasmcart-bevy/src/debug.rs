@@ -12,8 +12,9 @@
 //! }
 //! ```
 //!
-//! Three fields are always present: `bevy.frame` (frames updated),
-//! `bevy.entities` (live entity count) and `bevy.ready` (1 once every plugin
+//! Four fields are always present: `bevy.frame` (frames updated),
+//! `bevy.entities` (live entity count), `host.delta_ms` (the host frame time)
+//! and `bevy.ready` (1 once every plugin
 //! finished, i.e. the renderer is up).
 
 use core::ptr::{addr_of, addr_of_mut};
@@ -21,6 +22,7 @@ use core::ptr::{addr_of, addr_of_mut};
 use bevy::prelude::*;
 
 const MAX_FIELDS: usize = 64;
+const BUILTINS: usize = 4;
 
 /// User debug values, copied into the host-visible table after each frame.
 #[derive(Resource, Default)]
@@ -30,11 +32,11 @@ pub struct CartDebug {
 
 impl CartDebug {
     /// Set (or create) the field `name`. Names are fixed for the life of the
-    /// cart; at most 61 user fields.
+    /// cart; at most 60 user fields.
     pub fn set(&mut self, name: &'static str, value: f32) {
         if let Some(v) = self.values.iter_mut().find(|(n, _)| *n == name) {
             v.1 = value;
-        } else if self.values.len() < MAX_FIELDS - 3 {
+        } else if self.values.len() < MAX_FIELDS - BUILTINS {
             self.values.push((name, value));
         }
     }
@@ -56,6 +58,7 @@ const WC_DBG_F32: u8 = 6;
 static mut TABLE: Vec<Field> = Vec::new();
 static mut NAMES: Vec<Vec<u8>> = Vec::new();
 static mut BUILTIN: [u32; 3] = [0; 3];
+static mut DELTA_MS: f32 = 0.0;
 static mut VALUES: [f32; MAX_FIELDS] = [0.0; MAX_FIELDS];
 
 fn push(name: &str, value_ptr: u32, ty: u8) {
@@ -83,11 +86,14 @@ fn ensure_builtins() {
         if !(*addr_of!(TABLE)).is_empty() {
             return;
         }
+        // Fixed capacity: the host may hold the table pointer, so it must never move.
+        (*addr_of_mut!(TABLE)).reserve_exact(MAX_FIELDS + 1);
         (*addr_of_mut!(TABLE)).push(Field { name_ptr: 0, value_ptr: 0, ty: 0, _pad: [0; 3], len: 0 });
         let b = addr_of!(BUILTIN) as *const u32;
         push("bevy.frame", b as u32, WC_DBG_U32);
         push("bevy.entities", b.add(1) as u32, WC_DBG_U32);
         push("bevy.ready", b.add(2) as u32, WC_DBG_U32);
+        push("host.delta_ms", addr_of!(DELTA_MS) as u32, WC_DBG_F32);
     }
 }
 
@@ -101,8 +107,9 @@ pub(crate) fn publish(world: &mut World) {
         b[0] = b[0].wrapping_add(1);
         b[1] = world.entities().count_spawned() as u32;
         b[2] = 1;
+        *addr_of_mut!(DELTA_MS) = crate::abi::time().delta_ms as f32;
         if let Some(dbg) = world.get_resource::<CartDebug>() {
-            let user_count = (*addr_of!(TABLE)).len() - 1 - 3;
+            let user_count = (*addr_of!(TABLE)).len() - 1 - BUILTINS;
             for (i, (name, v)) in dbg.values.iter().enumerate() {
                 if i >= user_count {
                     let slot = (addr_of_mut!(VALUES) as *mut f32).add(i);

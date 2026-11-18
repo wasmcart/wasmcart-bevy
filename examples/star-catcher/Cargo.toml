@@ -1,0 +1,24 @@
+[package]
+name = "star-catcher"
+description = "A 2D wasmcart-bevy game: sprites loaded from the cart's assets, a pad-driven ship, sound effects and a score"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasmcart-bevy = { workspace = true, features = ["render"] }
+bevy = { workspace = true, features = [
+    "std",
+    "bevy_asset",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_sprite",
+    "bevy_sprite_render",
+    "bevy_text",
+    "default_font",
+    "png",
+] }
