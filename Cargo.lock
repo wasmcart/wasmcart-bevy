@@ -3793,7 +3793,7 @@ dependencies = [
 [[package]]
 name = "wasmcart"
 version = "0.1.0"
-source = "git+https://github.com/wasmcart/wasmcart-rust#283d82e16e5a8d8bf5d0f97cc7e90ed03f1a2434"
+source = "git+https://github.com/wasmcart/wasmcart-rust#90d748278f1b750ed3d9721e026c56121252cb4f"
 
 [[package]]
 name = "wasmcart-bevy"
@@ -3809,6 +3809,7 @@ dependencies = [
 [[package]]
 name = "wasmcart-wgpu"
 version = "0.1.0"
+source = "git+https://github.com/wasmcart/wasmcart-rust#90d748278f1b750ed3d9721e026c56121252cb4f"
 dependencies = [
  "wgpu",
 ]

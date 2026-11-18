@@ -82,7 +82,7 @@ fn click(
 ) {
     let mut at = None;
     if buttons.just_pressed(MouseButton::Left) {
-        at = window.iter().next().and_then(|w| w.physical_cursor_position()).map(|p| p.as_vec2());
+        at = window.iter().next().and_then(|w| w.physical_cursor_position());
     }
     if let Some(t) = touches.iter_just_pressed().next() {
         at = Some(t.position());

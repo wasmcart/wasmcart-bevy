@@ -215,5 +215,5 @@ everything they show and play.
 
 ## License
 
-MIT OR Apache-2.0, like Bevy. The vendored crates in `bevy-patches/` are Bevy's,
+MIT OR Apache-2.0 (LICENSE-MIT, LICENSE-APACHE), like Bevy. The vendored crates in `bevy-patches/` are Bevy's,
 under Bevy's license.

@@ -14,7 +14,7 @@ rust-version = "1.97"
 bevy = { version = "0.20.1", default-features = false }
 wasmcart = { git = "https://github.com/wasmcart/wasmcart-rust", features = ["std"] }
 wasmcart-bevy = { path = "crates/wasmcart-bevy" }
-wasmcart-wgpu = { path = "../wasmcart-rust/wasmcart-wgpu" }
+wasmcart-wgpu = { git = "https://github.com/wasmcart/wasmcart-rust" }
 
 [profile.release]
 opt-level = "s"
