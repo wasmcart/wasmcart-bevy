@@ -205,6 +205,14 @@ everything they show and play.
 
 ## Known gaps
 
+- WebGPU **compatibility mode** (the floor a host may hand a cart) does not
+  work yet: the 2D cart presents black (no sRGB canvas view in compat) and
+  the 3D cart trips compat limits. Carts run on core devices, which every
+  host offers where the GPU has one. The fix is in wasmcart-wgpu (reporting
+  compat's limits and missing features so Bevy picks its fallback paths).
+- Carts are large: 6 MB of wasm for the ECS-only cart, 18-19 MB for the 2D
+  and 3D carts (1.5, 4.7 and 5.2 MB as `.wasc`). Most of it is Bevy's
+  renderer and shader tooling.
 - Bevy's audio API (`AudioPlayer`, `bevy_audio`) is not available; use
   `Res<Audio>`. Ogg/MP3 decoding is not built in.
 - No multi-threading: Bevy runs single-threaded (wasmcart threads exist, but
