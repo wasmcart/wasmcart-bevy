@@ -69,6 +69,14 @@ const tests = {
     // 120 px/s for one second of host frames
     check('hello-ecs: d-pad right moves the player 120 px', near(r.fields.player_x - x0, 120, 3), `dx ${(r.fields.player_x - x0).toFixed(1)}`);
 
+    // a debugging host writes the cart's "speed" field: d-pad left now moves 240 px
+    await rd.call('wasm', { op: 'write', name: 'speed', value: 240 });
+    r = await rd.play([{ input: pad({ left: true }), frames: 60 }], ['player_x', 'speed']);
+    check('hello-ecs: a host write to a debug field reaches the cart', near(r.fields.player_x - (x0 + 120), -240, 3) && r.fields.speed === 240, `dx ${(r.fields.player_x - (x0 + 120)).toFixed(1)}, speed ${r.fields.speed}`);
+    await rd.call('wasm', { op: 'write', name: 'speed', value: 120 });
+    r = await rd.play([{ input: pad({ right: true }), frames: 60 }], ['player_x']);
+    control('hello-ecs: the 240 px check on a run after 120 was written back', near(r.fields.player_x - (x0 - 120), 240, 3), `dx ${(r.fields.player_x - (x0 - 120)).toFixed(1)}`);
+
     // keyboard: arrow left for one second moves 120 px too
     r = await rd.play([{ input: pad(), frames: 1 }], ['player_x']);
     const kx = r.fields.player_x;

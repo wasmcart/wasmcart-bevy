@@ -39,7 +39,9 @@ fn app() -> App {
 
 wasmcart_bevy::cart!(CART, app, debug);
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut dbg: ResMut<CartDebug>) {
+    // A field a debugging host may write: the player's speed in px/s.
+    dbg.set("speed", 120.0);
     commands.spawn((Player, Pos(Vec2::new(W as f32 / 2.0, H as f32 / 2.0)), Tint(0xFFFF_FFFF)));
     commands.insert_resource(Sounds {
         spawn: AudioClip::sweep(440.0, 880.0, 0.12, Wave::Square),
@@ -47,7 +49,8 @@ fn setup(mut commands: Commands) {
     });
 }
 
-fn steer(time: Res<Time>, pads: Query<&Gamepad>, mut q: Query<&mut Pos, With<Player>>) {
+fn steer(time: Res<Time>, pads: Query<&Gamepad>, dbg: Res<CartDebug>, mut q: Query<&mut Pos, With<Player>>) {
+    let speed = dbg.get("speed").unwrap_or(120.0);
     let Some(pad) = pads.iter().next() else { return };
     let mut dir = pad.left_stick();
     if pad.pressed(GamepadButton::DPadLeft) { dir.x -= 1.0; }
@@ -56,7 +59,7 @@ fn steer(time: Res<Time>, pads: Query<&Gamepad>, mut q: Query<&mut Pos, With<Pla
     if pad.pressed(GamepadButton::DPadDown) { dir.y -= 1.0; }
     for mut p in &mut q {
         // screen y grows downward; Bevy's stick y grows upward
-        p.0 += Vec2::new(dir.x, -dir.y).clamp_length_max(1.0) * 120.0 * time.delta_secs();
+        p.0 += Vec2::new(dir.x, -dir.y).clamp_length_max(1.0) * speed * time.delta_secs();
         p.0 = p.0.clamp(Vec2::ZERO, Vec2::new(W as f32 - 8.0, H as f32 - 8.0));
     }
 }

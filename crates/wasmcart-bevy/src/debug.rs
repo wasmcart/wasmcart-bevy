@@ -12,6 +12,12 @@
 //! }
 //! ```
 //!
+//! A debugging host may also WRITE a user field (romdev's
+//! `wasm({op:'write', name, value})`): the written value replaces the cart's
+//! own at the end of that frame and [`CartDebug::get`] returns it from then
+//! on, so a debug switch (an autopilot, a cheat) is a field the cart sets once
+//! and reads every frame.
+//!
 //! Four fields are always present: `bevy.frame` (frames updated),
 //! `bevy.entities` (live entity count), `host.delta_ms` (the host frame time)
 //! and `bevy.ready` (1 once every plugin
@@ -40,6 +46,12 @@ impl CartDebug {
             self.values.push((name, value));
         }
     }
+
+    /// The current value of field `name`: the last one set, or the last one
+    /// a debugging host wrote into it.
+    pub fn get(&self, name: &str) -> Option<f32> {
+        self.values.iter().find(|(n, _)| *n == name).map(|v| v.1)
+    }
 }
 
 #[repr(C)]
@@ -60,6 +72,8 @@ static mut NAMES: Vec<Vec<u8>> = Vec::new();
 static mut BUILTIN: [u32; 3] = [0; 3];
 static mut DELTA_MS: f32 = 0.0;
 static mut VALUES: [f32; MAX_FIELDS] = [0.0; MAX_FIELDS];
+/// What the cart last published into VALUES, to tell a host write from it.
+static mut PUBLISHED: [f32; MAX_FIELDS] = [0.0; MAX_FIELDS];
 
 fn push(name: &str, value_ptr: u32, ty: u8) {
     unsafe {
@@ -108,14 +122,20 @@ pub(crate) fn publish(world: &mut World) {
         b[1] = world.entities().count_spawned() as u32;
         b[2] = 1;
         *addr_of_mut!(DELTA_MS) = crate::abi::time().delta_ms as f32;
-        if let Some(dbg) = world.get_resource::<CartDebug>() {
+        if let Some(mut dbg) = world.get_resource_mut::<CartDebug>() {
             let user_count = (*addr_of!(TABLE)).len() - 1 - BUILTINS;
-            for (i, (name, v)) in dbg.values.iter().enumerate() {
+            let values = &mut *addr_of_mut!(VALUES);
+            let published = &mut *addr_of_mut!(PUBLISHED);
+            for (i, (name, v)) in dbg.bypass_change_detection().values.iter_mut().enumerate() {
                 if i >= user_count {
                     let slot = (addr_of_mut!(VALUES) as *mut f32).add(i);
                     push(name, slot as u32, WC_DBG_F32);
+                } else if values[i].to_bits() != published[i].to_bits() {
+                    // A debugging host wrote this field since the last frame.
+                    *v = values[i];
                 }
-                (*addr_of_mut!(VALUES))[i] = *v;
+                values[i] = *v;
+                published[i] = *v;
             }
         }
     }

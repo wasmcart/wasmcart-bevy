@@ -181,7 +181,10 @@ square, saw, triangle, noise) for quick effects.
 
 With `.debug()` and `cart!(CART, app, debug)` the cart exports wasmcart's named
 debug table. Systems publish values with `ResMut<CartDebug>`:
-`dbg.set("player_x", x)`. Four fields are always there: `bevy.frame`,
+`dbg.set("player_x", x)`. A debugging host can also write a field (romdev's
+`wasm({op:'write', name, value})`); `dbg.get(name)` then returns the written
+value, so a test switch such as an autopilot is a field the cart sets once and
+reads each frame. Four fields are always there: `bevy.frame`,
 `bevy.entities`, `bevy.ready` (1 once the renderer is up) and `host.delta_ms`.
 Leave `.debug()` off in a release cart: it then exports no debug surface.
 
