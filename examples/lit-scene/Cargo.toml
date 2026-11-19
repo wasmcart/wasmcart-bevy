@@ -9,6 +9,11 @@ publish = false
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+# Ask for a core WebGPU device (CartConfig::prefer_core); the gate builds
+# this as lit-scene-core.
+prefer-core = []
+
 [dependencies]
 wasmcart-bevy = { workspace = true, features = ["render"] }
 bevy = { workspace = true, features = [

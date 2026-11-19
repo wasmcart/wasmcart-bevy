@@ -8,7 +8,10 @@
 use bevy::prelude::*;
 use wasmcart_bevy::prelude::*;
 
+#[cfg(not(feature = "prefer-core"))]
 const CART: CartConfig = CartConfig::new(960, 540).webgpu().debug();
+#[cfg(feature = "prefer-core")]
+const CART: CartConfig = CartConfig::new(960, 540).webgpu().debug().prefer_core();
 
 fn app() -> App {
     let mut app = App::new();

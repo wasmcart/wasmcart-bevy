@@ -70,7 +70,27 @@ once a frame and each call is one `App::update`.
 
 `CartConfig` options: `.webgpu()` (render with Bevy; without it the cart has a
 2D framebuffer, `wasmcart_bevy::abi::framebuffer()`), `.pointer()`,
-`.keyboard()`, `.silent()`, `.debug()` (named fields for a debugger, below).
+`.keyboard()`, `.silent()`, `.debug()` (named fields for a debugger, below),
+`.prefer_core()` (below).
+
+## Core and compatibility-mode WebGPU
+
+A wasmcart host hands a cart a core WebGPU device where the GPU has one, and
+otherwise a **compatibility-mode** device (the GLES 3.1 / D3D11 class floor);
+a host can also be told to use compatibility mode. Every cart here runs on
+both, unchanged. [wasmcart-wgpu](https://github.com/wasmcart/wasmcart-rust/tree/main/wasmcart-wgpu)
+describes a compatibility-mode device as it is (no storage buffers in the
+vertex stage, no cube-array textures, 128 compute invocations ...), and Bevy
+picks its own downlevel paths from that: mesh data in uniform buffers,
+clustered lighting on the CPU, no GPU preprocessing. The canvas is an
+emulated `Rgba8UnormSrgb` surface, so colours are the same as on core.
+
+`CartConfig::prefer_core()` asks the host for a core device in `wc_init`
+(`core-features-and-limits`) and builds the app once the answer arrives, a
+frame or two later: a 3D game that wants core's features gets them wherever
+the GPU has them, even on a host that defaults to compatibility mode, and
+still runs in compatibility mode where it does not. The `gpu.core` debug
+field says which device the renderer got.
 
 ## Cargo setup
 
@@ -184,8 +204,10 @@ debug table. Systems publish values with `ResMut<CartDebug>`:
 `dbg.set("player_x", x)`. A debugging host can also write a field (romdev's
 `wasm({op:'write', name, value})`); `dbg.get(name)` then returns the written
 value, so a test switch such as an autopilot is a field the cart sets once and
-reads each frame. Four fields are always there: `bevy.frame`,
-`bevy.entities`, `bevy.ready` (1 once the renderer is up) and `host.delta_ms`.
+reads each frame. Five fields are always there: `bevy.frame`,
+`bevy.entities`, `bevy.ready` (1 once the renderer is up), `host.delta_ms`
+and `gpu.core` (1 on a core WebGPU device, 0 in compatibility mode or with
+no GPU).
 Leave `.debug()` off in a release cart: it then exports no debug surface.
 
 ## This repo
@@ -199,8 +221,13 @@ node test/run.mjs           # the gate: plays each cart through romdev
 `test/run.mjs` drives the carts through a romdev MCP
 server (`ROMDEV_URL`, default `http://127.0.0.1:7331/mcp`): it loads each
 cart, plays it with the pad, reads its debug fields, screenshots it and reads
-its audio ring, and checks what moved, what drew and what sounded. Each check
-has a control (no input, nothing that should sound) that must fail it.
+its audio ring, and checks what moved, what drew and what sounded. Every cart
+runs on a core device and again on a compatibility-mode device; each run
+checks which level it got (`gpu.core`), the compatibility-mode pictures are
+compared with the core ones (same colours), and `lit-scene-core` (lit-scene
+built with `.prefer_core()`) must get a core device on a compatibility-mode
+host. Each check has a control (no input, nothing that should sound, a frame
+without sRGB encoding) that must fail it.
 
 The art and sounds in `examples/star-catcher/assets` are drawn by
 `examples/star-catcher/tools/make-assets.mjs`; the other carts synthesize
@@ -208,11 +235,10 @@ everything they show and play.
 
 ## Known gaps
 
-- WebGPU **compatibility mode** (the floor a host may hand a cart) does not
-  work yet: the 2D cart presents black (no sRGB canvas view in compat) and
-  the 3D cart trips compat limits. Carts run on core devices, which every
-  host offers where the GPU has one. The fix is in wasmcart-wgpu (reporting
-  compat's limits and missing features so Bevy picks its fallback paths).
+- In compatibility mode a point light can cast shadows only while it is the
+  only shadow-casting point light (compat has no cube-array textures, and
+  wasmcart-wgpu turns a cube array of one cube into a cube). Use
+  `.prefer_core()` for a scene with several.
 - Carts are large: 6 MB of wasm for the ECS-only cart, 18-19 MB for the 2D
   and 3D carts (1.5, 4.7 and 5.2 MB as `.wasc`). Most of it is Bevy's
   renderer and shader tooling.
@@ -223,6 +249,16 @@ everything they show and play.
 - The cart does not follow host resizes; it renders at its `CartConfig` size.
 - Asset directories cannot be listed (`load_folder`), and there are no `.meta`
   files.
+
+## Related
+
+- [wasmcart-rust](https://github.com/wasmcart/wasmcart-rust): the Rust crates
+  for wasmcart, including [wasmcart-wgpu](https://github.com/wasmcart/wasmcart-rust/tree/main/wasmcart-wgpu),
+  the wgpu backend this crate renders through.
+- [wasmcart-macroquad](https://github.com/wasmcart/wasmcart-macroquad):
+  macroquad games as wasmcart carts.
+- [wasmcart-rust-examples](https://github.com/wasmcart/wasmcart-rust-examples):
+  example Rust carts.
 
 ## License
 

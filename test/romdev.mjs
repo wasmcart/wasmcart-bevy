@@ -33,7 +33,7 @@ export class Romdev {
     const body = text.replace(/\nsession: .*$/s, '').replace(/session: [0-9a-f-]+ - .*$/s, '');
     try { return JSON.parse(body); } catch { return body; }
   }
-  load(path) { return this.call('loadMedia', { platform: 'wasmcart', path }); }
+  load(path, level) { return this.call('loadMedia', { platform: 'wasmcart', path, ...(level && { wgpuFeatureLevel: level }) }); }
   play(steps, fields, stopWhen) { return this.call('input', { op: 'sequence', steps, fields, ...(stopWhen && { stopWhen }) }); }
   shot(path, frames = 1) { return this.call('frame', { op: 'stepAndShot', frames, path }); }
   async read(offset, length) {

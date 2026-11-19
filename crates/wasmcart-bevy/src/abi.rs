@@ -43,6 +43,8 @@ pub struct CartConfig {
     pub flags: u32,
     /// Export the named debug table (`WC_FLAG_DEBUG` + `wc_debug_state`).
     pub debug: bool,
+    /// Ask for a core WebGPU device before building the app.
+    pub prefer_core: bool,
 }
 
 impl CartConfig {
@@ -56,6 +58,7 @@ impl CartConfig {
             audio_rate: 48000,
             flags: 0,
             debug: false,
+            prefer_core: false,
         }
     }
     /// Render with WebGPU (Bevy's renderer).
@@ -76,6 +79,17 @@ impl CartConfig {
     /// Emit no audio at all.
     pub const fn silent(mut self) -> Self {
         self.audio_frames = 0;
+        self
+    }
+    /// Render on a **core** WebGPU device where the GPU has one, even on a
+    /// host that hands carts a compatibility-mode device. Without it the cart
+    /// takes the host's device, core or compatibility mode, and Bevy picks
+    /// its paths from what that device reports. With it, `wc_init` asks the
+    /// host for a core device and the app is built once the answer arrives
+    /// (a frame or two later); where there is no core device the app runs on
+    /// the host's compatibility-mode device as usual.
+    pub const fn prefer_core(mut self) -> Self {
+        self.prefer_core = true;
         self
     }
     /// Expose debug fields by name to a debugging host (see [`crate::debug`]).
@@ -278,6 +292,19 @@ pub fn get_info(cfg: &CartConfig) -> *mut WcInfo {
 pub fn init(cfg: &CartConfig, build: fn() -> App) {
     get_info(cfg);
     crate::logger::install();
+    #[cfg(feature = "render")]
+    if cfg.gpu == Gpu::WebGpu && cfg.prefer_core && crate::render::start_core_request() {
+        // The app is built when the answer arrives (render()).
+        unsafe { *addr_of_mut!(DEFERRED_BUILD) = Some(build) };
+        return;
+    }
+    start(build);
+}
+
+/// A build waiting for the core device request (CartConfig::prefer_core).
+static mut DEFERRED_BUILD: Option<fn() -> App> = None;
+
+fn start(build: fn() -> App) {
     let app = build();
     unsafe {
         *addr_of_mut!(RUNTIME) = Some(Runtime { app, ready: false });
@@ -320,6 +347,14 @@ fn step_lifecycle() -> bool {
 
 #[doc(hidden)]
 pub fn render() {
+    #[cfg(feature = "render")]
+    if unsafe { (*addr_of!(DEFERRED_BUILD)).is_some() } {
+        if !crate::render::poll_core_request() {
+            return;
+        }
+        let build = unsafe { (*addr_of_mut!(DEFERRED_BUILD)).take().unwrap() };
+        start(build);
+    }
     if !step_lifecycle() {
         return;
     }

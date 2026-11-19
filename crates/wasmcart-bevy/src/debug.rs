@@ -18,17 +18,18 @@
 //! on, so a debug switch (an autopilot, a cheat) is a field the cart sets once
 //! and reads every frame.
 //!
-//! Four fields are always present: `bevy.frame` (frames updated),
-//! `bevy.entities` (live entity count), `host.delta_ms` (the host frame time)
-//! and `bevy.ready` (1 once every plugin
-//! finished, i.e. the renderer is up).
+//! Five fields are always present: `bevy.frame` (frames updated),
+//! `bevy.entities` (live entity count), `host.delta_ms` (the host frame time),
+//! `bevy.ready` (1 once every plugin finished, i.e. the renderer is up) and
+//! `gpu.core` (1 when rendering on a core WebGPU device, 0 on a
+//! compatibility-mode device or with no GPU).
 
 use core::ptr::{addr_of, addr_of_mut};
 
 use bevy::prelude::*;
 
 const MAX_FIELDS: usize = 64;
-const BUILTINS: usize = 4;
+const BUILTINS: usize = 5;
 
 /// User debug values, copied into the host-visible table after each frame.
 #[derive(Resource, Default)]
@@ -69,7 +70,7 @@ const WC_DBG_F32: u8 = 6;
 
 static mut TABLE: Vec<Field> = Vec::new();
 static mut NAMES: Vec<Vec<u8>> = Vec::new();
-static mut BUILTIN: [u32; 3] = [0; 3];
+static mut BUILTIN: [u32; 4] = [0; 4];
 static mut DELTA_MS: f32 = 0.0;
 static mut VALUES: [f32; MAX_FIELDS] = [0.0; MAX_FIELDS];
 /// What the cart last published into VALUES, to tell a host write from it.
@@ -108,6 +109,7 @@ fn ensure_builtins() {
         push("bevy.entities", b.add(1) as u32, WC_DBG_U32);
         push("bevy.ready", b.add(2) as u32, WC_DBG_U32);
         push("host.delta_ms", addr_of!(DELTA_MS) as u32, WC_DBG_F32);
+        push("gpu.core", b.add(3) as u32, WC_DBG_U32);
     }
 }
 
@@ -121,6 +123,10 @@ pub(crate) fn publish(world: &mut World) {
         b[0] = b[0].wrapping_add(1);
         b[1] = world.entities().count_spawned() as u32;
         b[2] = 1;
+        #[cfg(feature = "render")]
+        {
+            b[3] = crate::render::GPU_CORE.load(core::sync::atomic::Ordering::Relaxed);
+        }
         *addr_of_mut!(DELTA_MS) = crate::abi::time().delta_ms as f32;
         if let Some(mut dbg) = world.get_resource_mut::<CartDebug>() {
             let user_count = (*addr_of!(TABLE)).len() - 1 - BUILTINS;
